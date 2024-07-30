@@ -6,7 +6,7 @@ use vector_config::configurable_component;
 
 use super::super::default_data_dir;
 use super::Telemetry;
-use super::{proxy::ProxyConfig, AcknowledgementsConfig, LogSchema};
+use super::{AcknowledgementsConfig, LogSchema};
 use crate::serde::bool_or_struct;
 
 #[derive(Debug, Snafu)]
@@ -68,10 +68,6 @@ pub struct GlobalOptions {
     /// [tzdb]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
     #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     pub timezone: Option<TimeZone>,
-
-    #[configurable(derived)]
-    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
-    pub proxy: ProxyConfig,
 
     /// Controls how acknowledgements are handled for all sinks by default.
     ///
@@ -170,18 +166,6 @@ impl GlobalOptions {
     pub fn merge(&self, with: Self) -> Result<Self, Vec<String>> {
         let mut errors = Vec::new();
 
-        if conflicts(&self.proxy.http, &with.proxy.http) {
-            errors.push("conflicting values for 'proxy.http' found".to_owned());
-        }
-
-        if conflicts(&self.proxy.https, &with.proxy.https) {
-            errors.push("conflicting values for 'proxy.https' found".to_owned());
-        }
-
-        if !self.proxy.no_proxy.is_empty() && !with.proxy.no_proxy.is_empty() {
-            errors.push("conflicting values for 'proxy.no_proxy' found".to_owned());
-        }
-
         if conflicts(&self.timezone, &with.timezone) {
             errors.push("conflicting values for 'timezone' found".to_owned());
         }
@@ -221,7 +205,6 @@ impl GlobalOptions {
                 telemetry,
                 acknowledgements: self.acknowledgements.merge_default(&with.acknowledgements),
                 timezone: self.timezone.or(with.timezone),
-                proxy: self.proxy.merge(&with.proxy),
                 expire_metrics: self.expire_metrics.or(with.expire_metrics),
                 expire_metrics_secs: self.expire_metrics_secs.or(with.expire_metrics_secs),
             })
